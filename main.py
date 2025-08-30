@@ -4,8 +4,14 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-if sys.argv[1:] == []: # quit if nothing provided to pass into gemini
+verbose = '--verbose' in sys.argv
+
+args = [arg for arg in sys.argv[1:] if arg != '--verbose']
+
+if not args:
     sys.exit(1)
+
+user_prompt = ' '.join(args)
 
 load_dotenv()
 api_key = os.environ.get('GEMINI_API_KEY')
@@ -19,6 +25,11 @@ response = client.models.generate_content(
     model='gemini-2.0-flash-001',
     contents=messages)
 
-print(f'\nPrompt tokens: {gemini_response.usage_metadata.prompt_token_count}\n')
-print(f'Response tokens: {gemini_response.usage_metadata.candidates_token_count}\n')
-print(f'Response:\n\n{gemini_response.text}')
+prompt_tokens = response.usage_metadata.prompt_token_count
+response_tokens = response.usage_metadata.candidates_token_count
+
+if verbose:
+    print(f'User prompt: {user_prompt}')
+    print(f'Prompt tokens: {prompt_tokens}')
+    print(f'Response tokens: {response_tokens}')
+print(f'Response: {response.text}')
