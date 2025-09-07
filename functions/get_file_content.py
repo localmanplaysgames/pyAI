@@ -1,5 +1,20 @@
 import os
 from config import *
+from google.genai import types
+
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Reads the contents of the specified file, constrained to the working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The path of the file to read the contents of.",
+            ),
+        },
+    ),
+)
 
 def get_file_content(working_directory, file_path):
     wd_abs = os.path.abspath(working_directory).rstrip(os.sep)
