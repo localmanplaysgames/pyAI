@@ -69,32 +69,46 @@ def main():
     messages = [
         types.Content(role='user', parts=[types.Part(text=user_prompt)]),
     ]
-    response = client.models.generate_content(
-        model='gemini-2.0-flash-001',
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=SYSTEM_PROMPT))
+    
+    limit = RESPONSES_LIMIT
+    while limit > 0:
+        print(f'{limit} -- {messages}\n\n')
+        limit -= 1
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-001',
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    tools=[available_functions], system_instruction=SYSTEM_PROMPT))
 
-    prompt_tokens = response.usage_metadata.prompt_token_count
-    response_tokens = response.usage_metadata.candidates_token_count
+            for candidate in response.candidates:
+                messages.append(candidate.content)
 
-    if verbose:
-        print(f'User prompt: {user_prompt}')
-        print(f'Prompt tokens: {prompt_tokens}')
-        print(f'Response tokens: {response_tokens}')
-    if response.function_calls != None and len(response.function_calls) > 0:
-        function_call = call_function(response.function_calls[0])
-        result = function_call.parts[0].function_response.response.get('result')
-        if not result:
-            raise Exception('FUNCTION CALL FAILED, TERMINATING.')
-        else:
+            prompt_tokens = response.usage_metadata.prompt_token_count
+            response_tokens = response.usage_metadata.candidates_token_count
+
             if verbose:
-                print(function_call.parts[0].function_response.response)
-            else:
-                print(result)
-
-    else:
-        print(f'Response: {response.text}')
+                print(f'User prompt: {user_prompt}')
+                print(f'Prompt tokens: {prompt_tokens}')
+                print(f'Response tokens: {response_tokens}')
+            if response.function_calls != None and len(response.function_calls) > 0:
+                function_call = call_function(response.function_calls[0], verbose)
+                result = function_call.parts[0].function_response.response.get('result')
+                if not result:
+                    raise Exception('FUNCTION CALL FAILED, TERMINATING.')
+                else:
+                    messages.append(function_call)
+                    if verbose:
+                        print(function_call.parts[0].function_response.response)
+                    else:
+                        print(result)
+            elif response.text:
+                print(f'Response: {response.text}')
+                break
+                
+        except Exception as e:
+            print(f'Error: {e}')
+            break
 
 if __name__ == '__main__':
     main()

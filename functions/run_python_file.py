@@ -20,7 +20,11 @@ schema_run_python_file = types.FunctionDeclaration(
     ),
 )
 
-def run_python_file(working_directory, file_path, args=[]):
+def run_python_file(working_directory, file_path, args=None):
+    if args is None:
+        args = []
+    elif isinstance(args, str):
+        args = [args]
     wd_abs = os.path.abspath(working_directory).rstrip(os.sep)
     fp_abs = os.path.abspath(os.path.join(wd_abs, file_path))
     if not fp_abs.startswith(wd_abs):
