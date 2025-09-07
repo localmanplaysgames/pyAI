@@ -1,13 +1,15 @@
 import os
 import sys
+
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from config import *
-from functions.get_files_info import schema_get_files_info
-from functions.get_file_content import schema_get_file_content
-from functions.write_file import schema_write_file
-from functions.run_python_file import schema_run_python_file
+
+from functions.get_files_info import *
+from functions.get_file_content import *
+from functions.write_file import *
+from functions.run_python_file import *
 
 def main():
 
@@ -30,6 +32,40 @@ def main():
         ]
     )
 
+    def call_function(function_call_part, verbose=False):
+        if verbose:
+            print (f'Calling function: {function_call_part.name}({function_call_part.args})')
+        else:
+            print (f' - Calling function: {function_call_part.name}')
+        function_map = {
+            'get_files_info': get_files_info,
+            'get_file_content': get_file_content,
+            'run_python_file': run_python_file,
+            'write_file': write_file
+        }
+        func = function_map.get(function_call_part.name)
+        if func:
+            result =  func('./calculator', **function_call_part.args)
+            return types.Content(
+                role="tool",
+                parts=[
+                    types.Part.from_function_response(
+                        name=function_call_part.name,
+                        response={'result':result}
+                    )
+                ]
+            )
+        else:
+            return types.Content(
+                role="tool",
+                parts=[
+                    types.Part.from_function_response(
+                        name=function_name,
+                        response={"error": f"Unknown function: {function_name}"},
+                    )
+                ],
+            )   
+
     messages = [
         types.Content(role='user', parts=[types.Part(text=user_prompt)]),
     ]
@@ -47,9 +83,18 @@ def main():
         print(f'Prompt tokens: {prompt_tokens}')
         print(f'Response tokens: {response_tokens}')
     if response.function_calls != None and len(response.function_calls) > 0:
-        function_call = response.function_calls[0]
-        print (f'Calling function: {function_call.name}({function_call.args})')
-    #print(f'Response: {response.text}')
+        function_call = call_function(response.function_calls[0])
+        result = function_call.parts[0].function_response.response.get('result')
+        if not result:
+            raise Exception('FUNCTION CALL FAILED, TERMINATING.')
+        else:
+            if verbose:
+                print(function_call.parts[0].function_response.response)
+            else:
+                print(result)
+
+    else:
+        print(f'Response: {response.text}')
 
 if __name__ == '__main__':
     main()
